@@ -142,8 +142,6 @@ _Fill in from `results.csv` after running `experiment.py`, and add graphs or scr
 | static | on | | | | | | |
 | dynamic | on | | | | | | |
 
-Discussion: _(comparison of static vs dynamic, effect of client count, anything unexpected)_
-
 ## 9. Known limitations
 - One OVS switch; the bottleneck is modelled on the server-facing port only.
 - Controller events use UDP (fire-and-forget); a lost event delays reclassification until the flow idle timeout.
