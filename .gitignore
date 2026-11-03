@@ -1,0 +1,7 @@
+# runtime data - never commit (users.json holds password hashes)
+users.json
+*.log
+__pycache__/
+*.pyc
+.venv/
+ryu-env/

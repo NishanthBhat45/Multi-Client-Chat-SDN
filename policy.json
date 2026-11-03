@@ -1,0 +1,7 @@
+{
+  "default_tier": "normal",
+  "users": {"alice": "premium", "mallory": "blocked"},
+  "prefix_tiers": {"vip": "premium"},
+  "rooms": {"announce": "premium"},
+  "admins": ["alice"]
+}
