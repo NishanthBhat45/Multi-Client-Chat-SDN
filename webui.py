@@ -311,7 +311,7 @@ input,select{width:100%;padding:8px 10px;border:1px solid var(--line);border-rad
 button{padding:8px 12px;border:1px solid var(--line);border-radius:7px;background:var(--card);color:var(--fg);font:inherit;cursor:pointer}
 button.p{background:var(--acc);border-color:var(--acc);color:#fff}button:hover{filter:brightness(.96)}
 .row{display:flex;gap:8px;margin-top:14px}.row>*{flex:1}.err{color:#d64545;margin-top:10px;min-height:1em;font-size:13px}
-#app{display:grid;grid-template-columns:210px 1fr 380px;gap:12px;padding:12px;height:100vh}
+#app{display:grid;grid-template-columns:250px minmax(0,1fr) 380px;grid-template-rows:minmax(0,1fr);gap:12px;padding:12px;height:100vh}
 aside,main,section{padding:12px;display:flex;flex-direction:column;min-height:0}
 h3{margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut)}
 .list{overflow:auto;margin-bottom:12px}.item{padding:6px 8px;border-radius:6px;cursor:pointer;display:flex;justify-content:space-between}
@@ -331,7 +331,12 @@ canvas{width:100%;height:240px;border:1px solid var(--line);border-radius:8px;ba
 .seg{display:flex;gap:6px}.seg button{flex:1}.row2{display:flex;gap:8px;align-items:center;margin-top:8px}.row2 input[type=number]{width:70px}
 .x{color:var(--mut);padding:0 4px;cursor:pointer}.x:hover{color:#d64545}.item.av{color:var(--mut)}
 table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}td,th{text-align:left;padding:3px 4px;border-bottom:1px solid var(--line)}
-@media(max-width:1000px){#app{grid-template-columns:1fr;height:auto}#log{height:300px}}
+.chathead{display:flex;align-items:center;gap:8px;margin-bottom:8px;min-height:30px}.chathead h3{margin:0;flex:1;font-size:13px}
+button.small{padding:3px 10px;font-size:12px}.composer{margin:0 0 10px!important}.badge.dm{background:var(--warn)}
+main.dm{border-color:var(--warn)}main.dm .chathead{border-left:4px solid var(--warn);padding-left:8px}
+.empty{color:var(--mut);text-align:center;margin-top:30px}.ub{background:#d64545;color:#fff;border-radius:99px;font-size:11px;padding:0 6px;margin-left:6px;font-weight:600}
+.item.off{opacity:.55}.item>span:last-child{white-space:nowrap}
+@media(max-width:1000px){#app{grid-template-columns:minmax(0,1fr);grid-template-rows:none;height:auto}main{order:-1}#log{flex:none;height:55vh;min-height:260px}}
 </style></head><body>
 <div id="login" class="card"><h2>SDN Chat</h2>
 <label>Server</label><input id="srv" value="__SERVER__:__PORT__">
@@ -342,20 +347,20 @@ table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}td,th{te
 
 <div id="app" hidden>
 <aside class="card">
- <h3>You</h3><div style="margin-bottom:14px"><b id="me"></b> <span class="badge" id="tier">?</span> <span class="badge adm" id="adm" hidden>admin</span></div>
+ <h3>You</h3><div style="margin-bottom:14px;display:flex;align-items:center;gap:6px;flex-wrap:wrap"><b id="me"></b> <span class="badge" id="tier">?</span> <span class="badge adm" id="adm" hidden>admin</span><button class="small" id="bOut" style="margin-left:auto">Disconnect</button></div>
  <h3>Your rooms</h3><div class="list" id="rooms"></div>
  <h3>Other rooms (click to join)</h3><div class="list" id="avail"></div>
  <div class="send" style="margin:0 0 14px"><input id="jr" placeholder="new/other room"><button id="bJoin">Join</button></div>
- <h3>Online (click to PM)</h3><div class="list" id="users"></div>
+ <h3>Direct messages (click to chat)</h3><div class="list" id="users"></div>
  <div id="admin" hidden><h3>Admin</h3><div class="box"><input id="adu" placeholder="username">
   <div class="row2"><button id="bBlock">Block</button><button id="bUnblock">Unblock</button></div>
   <div class="row2"><button id="bUp">&#9650; Premium</button><button id="bDown">&#9660; Normal</button></div>
   <div class="hint">Block closes the connection and installs drop flows. Tier changes re-classify the user's flows at once. Room policy (e.g. announce) can still raise a user's effective tier.</div></div></div>
- <button id="bOut" style="margin-top:auto">Disconnect</button>
 </aside>
 <main class="card">
- <h3 id="tgt">Room: general</h3><div id="log"></div>
- <div class="send"><input id="txt" placeholder="Type a message..." autocomplete="off"><button class="p" id="bSend">Send</button><button id="bBurst" title="Send 20 messages back-to-back to create load">Burst x20</button></div>
+ <div class="chathead"><h3 id="tgt">Room: #general</h3><span class="badge dm" id="dmtag" hidden>private</span><button class="small" id="bClearChat" title="Clear this conversation from your screen">Clear chat</button></div>
+ <div class="send composer"><input id="txt" placeholder="Type a message..." autocomplete="off"><button class="p" id="bSend">Send</button><button id="bBurst" title="Send 20 messages back-to-back to create load">Burst x20</button></div>
+ <div id="log"></div>
 </main>
 <section class="card">
  <h3>Round-trip time (ms)</h3><canvas id="chart"></canvas>
@@ -377,6 +382,7 @@ table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}td,th{te
 
 <script>
 const $=id=>document.getElementById(id);
+const convs={}, unread={};
 let lastUsers=[], lastTiers={}, isAdmin=false, mode='dynamic', loadOn=false, sid=null, since=0, me='', target={type:'room',name:'general'}, joined=new Set(), samples=[], t0=Date.now();
 const WINDOW=90; // seconds shown on the graph
 
@@ -405,26 +411,49 @@ async function send(line,kind,arg){
   if(!j.ok){addLog('error','',null,'Message not sent: connection lost. Click Disconnect, then log in again.');}
   return j;
 }
-function addLog(cls,html,user,text){
-  const d=document.createElement('div');d.className='m '+cls;
-  if(user){const u=document.createElement('span');u.className='u';u.textContent=user+': ';d.appendChild(u);d.appendChild(document.createTextNode(text));}
-  else d.textContent=text;
-  const log=$('log');log.appendChild(d);log.scrollTop=log.scrollHeight;
+const keyOf=t=>t.type+':'+t.name;
+const conv=k=>convs[k]||(convs[k]=[]);
+function entryEl(e){const d=document.createElement('div');d.className='m '+e.cls;
+  if(e.user){const u=document.createElement('span');u.className='u';u.textContent=e.user+': ';d.appendChild(u);d.appendChild(document.createTextNode(e.text));}
+  else d.textContent=e.text;return d;}
+function renderLog(){
+  const log=$('log');log.innerHTML='';const list=conv(keyOf(target));
+  if(!list.length){const d=document.createElement('div');d.className='empty';
+    d.textContent=target.type==='pm'?'No private messages with '+target.name+' yet. Type below and press Send to start.':'No messages in #'+target.name+' yet.';log.appendChild(d);}
+  list.forEach(e=>log.appendChild(entryEl(e)));log.scrollTop=log.scrollHeight;}
+function addLog(cls,html,user,text,key){
+  key=key||keyOf(target);const e={cls,user,text};conv(key).push(e);
+  if(conv(key).length>500)conv(key).shift();
+  if(key===keyOf(target)){const log=$('log');const em=log.querySelector('.empty');if(em)em.remove();log.appendChild(entryEl(e));log.scrollTop=log.scrollHeight;}
+  else if(user&&!/\bme\b/.test(cls)){unread[key]=(unread[key]||0)+1;renderRooms();renderUsers();}
 }
+function setTarget(t){
+  target=t;unread[keyOf(t)]=0;const pm=t.type==='pm';
+  $('tgt').textContent=pm?'Private chat with '+t.name:'Room: #'+t.name;
+  $('dmtag').hidden=!pm;document.querySelector('main').classList.toggle('dm',pm);
+  $('txt').placeholder=pm?'Message '+t.name+' privately...':'Message #'+t.name+'...';
+  $('bBurst').disabled=pm;renderRooms();renderUsers();renderLog();$('txt').focus();
+}
+function dmNames(){const s=new Set(lastUsers.filter(u=>u!==me));
+  Object.keys(convs).forEach(k=>{if(k.startsWith('pm:')&&convs[k].length)s.add(k.slice(3));});
+  if(target.type==='pm')s.add(target.name);return [...s].sort();}
+function clearConv(k){convs[k]=[];if(k===keyOf(target))renderLog();renderUsers();}
+function resetChats(){Object.keys(convs).forEach(k=>delete convs[k]);Object.keys(unread).forEach(k=>delete unread[k]);}
+$('bClearChat').onclick=()=>clearConv(keyOf(target));
 function setTier(t){const b=$('tier');b.textContent=t;b.className='badge '+t;}
 
 function handle(ev){
   switch(ev.type){
-    case 'login': isAdmin=!!ev.admin;$('adm').hidden=!isAdmin;$('admin').hidden=!isAdmin;$('login').hidden=true;$('app').hidden=false;$('me').textContent=me;setTier(ev.tier);joined.add('general');renderRooms([]);samples=[];t0=Date.now();draw();break;
+    case 'login': isAdmin=!!ev.admin;$('adm').hidden=!isAdmin;$('admin').hidden=!isAdmin;$('login').hidden=true;$('app').hidden=false;$('me').textContent=me;setTier(ev.tier);joined.add('general');resetChats();setTarget({type:'room',name:'general'});samples=[];t0=Date.now();draw();break;
     case 'tier': setTier(ev.tier);addLog('info','',null,'Your SDN traffic tier is now '+ev.tier);break;
     case 'rtt': samples.push({t:Date.now(),ms:ev.ms,kind:ev.kind});if(samples.length>5000)samples.shift();draw();break;
-    case 'msg': if(ev.room===target.name&&target.type==='room')addLog('', '',ev.user,ev.text);else addLog('info','',null,'['+ev.room+'] '+ev.user+': '+ev.text);break;
-    case 'pm': addLog('pm','',ev.user+' (private)',ev.text);break;
-    case 'pm_sent': addLog('pm me','','me → '+ev.to,ev.text);break;
-    case 'info': addLog('info','',null,ev.text);break;
+    case 'msg': addLog('','',ev.user,ev.text,'room:'+ev.room);break;
+    case 'pm': addLog('pm','',ev.user,ev.text,'pm:'+ev.user);break;
+    case 'pm_sent': addLog('pm me','','me',ev.text,'pm:'+ev.to);break;
+    case 'info': {const m=/ (?:joined|left) (\w+)$/.exec(ev.text);addLog('info','',null,ev.text,m?'room:'+m[1]:undefined);break;}
     case 'error': if(!$('app').hidden)addLog('error','',null,'Error: '+ev.text);else if(ev.text!=='user exists'){$('lerr').textContent=ev.text;const s=sid;sid=null;if(s)api('/api/disconnect',{sid:s});} break;
     case 'join': joined.add(ev.room);renderRooms();break;
-    case 'leave': joined.delete(ev.room);if(target.name===ev.room)selectRoom('general');renderRooms();break;
+    case 'leave': joined.delete(ev.room);if(target.type==='room'&&target.name===ev.room)setTarget({type:'room',name:'general'});renderRooms();break;
     case 'rooms': renderRooms(ev.rooms);break;
     case 'users': lastUsers=ev.users;lastTiers=ev.tiers||{};renderUsers();break;
     case 'closed': if(sid){addLog('error','',null,'Disconnected from server. Click Disconnect, then log in again.');sid=null;if($('app').hidden)$('lerr').textContent=$('lerr').textContent||'Connection closed.';}break;
@@ -435,7 +464,7 @@ function renderRooms(list){
   if(list&&list.length){roomCounts={};list.forEach(r=>roomCounts[r.name]=r.count);}
   const box=$('rooms');box.innerHTML='';
   [...joined].sort().forEach(n=>{const d=document.createElement('div');d.className='item'+(target.type==='room'&&target.name===n?' sel':'');
-    const l=document.createElement('span');l.textContent='# '+n;const r=document.createElement('span');r.className='cnt';r.textContent=roomCounts[n]||'';
+    const l=document.createElement('span');l.textContent='# '+n;if(unread['room:'+n]){const b=document.createElement('span');b.className='ub';b.textContent=unread['room:'+n];l.appendChild(b);}const r=document.createElement('span');r.className='cnt';r.textContent=roomCounts[n]||'';
     if(n!=='general'){const x=document.createElement('span');x.className='x';x.textContent='\u2715';x.title='leave room';
       x.onclick=e=>{e.stopPropagation();send('LEAVE '+n,'leave',n);};r.appendChild(x);}
     d.append(l,r);d.onclick=()=>selectRoom(n);box.appendChild(d);});
@@ -447,19 +476,24 @@ function renderRooms(list){
 function renderUsers(){
   const box=$('users');box.innerHTML='';
   const act=(txt,title,fn)=>{const b=document.createElement('span');b.className='x';b.textContent=txt;b.title=title;b.onclick=e=>{e.stopPropagation();fn();};return b;};
-  lastUsers.filter(u=>u!==me).forEach(n=>{const d=document.createElement('div');d.className='item'+(target.type==='pm'&&target.name===n?' sel':'');
-    const l=document.createElement('span');l.textContent=n;
+  const names=dmNames();
+  if(!names.length){const d=document.createElement('div');d.className='hint';d.textContent='No one else is online yet.';box.appendChild(d);}
+  names.forEach(n=>{const online=lastUsers.includes(n);
+    const d=document.createElement('div');d.className='item'+(target.type==='pm'&&target.name===n?' sel':'')+(online?'':' off');
+    const l=document.createElement('span');l.textContent=n+(online?'':' (offline)');
     if(lastTiers[n]){const t=document.createElement('span');t.className='badge '+lastTiers[n];t.style.marginLeft='6px';t.textContent=lastTiers[n];l.appendChild(t);}
+    if(unread['pm:'+n]){const b=document.createElement('span');b.className='ub';b.textContent=unread['pm:'+n];l.appendChild(b);}
     d.appendChild(l);
-    if(isAdmin){const a=document.createElement('span');
-      a.append(act('\u25B2','Upgrade to premium',()=>send('SETTIER '+n+' premium','cmd')),
+    const a=document.createElement('span');
+    if(isAdmin&&online)a.append(act('\u25B2','Upgrade to premium',()=>send('SETTIER '+n+' premium','cmd')),
                act('\u25BC','Downgrade to normal',()=>send('SETTIER '+n+' normal','cmd')),
                act('block','Block this user',()=>{if(confirm('Block '+n+'?'))send('BLOCK '+n,'cmd');}));
-      d.appendChild(a);}
-    d.onclick=()=>{target={type:'pm',name:n};$('tgt').textContent='Private message to '+n;renderRooms();renderUsers();};
+    if((convs['pm:'+n]||[]).length)a.append(act('clear','Clear this conversation',()=>clearConv('pm:'+n)));
+    d.appendChild(a);
+    d.onclick=()=>setTarget({type:'pm',name:n});
     box.appendChild(d);});
 }
-function selectRoom(n){target={type:'room',name:n};$('tgt').textContent='Room: '+n;renderRooms();renderUsers();}
+function selectRoom(n){setTarget({type:'room',name:n});}
 $('bJoin').onclick=()=>{const r=$('jr').value.trim();if(r){send('JOIN '+r,'join',r);$('jr').value='';}};
 $('jr').onkeydown=e=>{if(e.key==='Enter')$('bJoin').click()};
 
@@ -471,7 +505,7 @@ $('bSend').onclick=()=>{const t=$('txt').value.trim();if(t){sendText(t);$('txt')
 $('txt').onkeydown=e=>{if(e.key==='Enter')$('bSend').click()};
 $('bBurst').onclick=async()=>{if(target.type!=='room'){addLog('error','',null,'Select a room for a burst.');return;}
   for(let i=0;i<20;i++){send('MSG '+target.name+' burst '+(i+1),'msg');}addLog('info','',null,'Sent 20 messages in a burst.');};
-$('bOut').onclick=async()=>{if(sid){const s=sid;sid=null;await api('/api/disconnect',{sid:s});}$('app').hidden=true;$('login').hidden=false;$('log').innerHTML='';joined.clear();};
+$('bOut').onclick=async()=>{if(sid){const s=sid;sid=null;await api('/api/disconnect',{sid:s});}$('app').hidden=true;$('login').hidden=false;resetChats();joined.clear();target={type:'room',name:'general'};renderLog();};
 $('bClr').onclick=()=>{samples=[];t0=Date.now();draw();};
 setInterval(()=>{if(sid&&!$('app').hidden){send('USERS','users');send('ROOMS','rooms');}},5000);
 setInterval(draw,1000);
