@@ -134,7 +134,8 @@ It runs static and dynamic modes, with and without a 12 Mbps UDP background floo
 | T9 | Tier change | admin `/settier user premium` | user's flows are re-classified immediately |
 
 ## 8. Results
-_Fill in from `results.csv` after running `experiment.py`, and add graphs or screenshots under `docs/`._
+_Filled in from `results.csv` after running `experiment.py`, and screenshots are under `docs/`._
+Full data: [docs/results.csv](docs/results.csv)
 
 | Mode | Background load | Clients | Tier | Mean RTT (ms) | p95 (ms) | p99 (ms) | Errors |
 |---|---|---|---|---|---|---|---|
