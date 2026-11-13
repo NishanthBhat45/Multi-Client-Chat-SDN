@@ -147,6 +147,6 @@ Full data: [docs/results.csv](docs/results.csv)
 ## 10. Team
 | Name | SRN | Contribution |
 |---|---|---|
-| Nishanth Ramesh Bhat | PES1UG25CS350 | Chat application: server.py, client.py, policy.json, webui.py |
+| Nishanth Ramesh Bhat | PES1UG25CS350 | Chat application: server.py, client.py, policy.json, setmode.py, webui.py |
 | Nithin Kumar K | PES1UG25CS353 | SDN and network: controller.py, topo.py |
 | Nihal Narayanan | PES1UG25CS335 | Integration: bench.py, experiment.py, README |
