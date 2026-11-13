@@ -147,6 +147,6 @@ Full data: [docs/results.csv](docs/results.csv)
 ## 10. Team
 | Name | SRN | Contribution |
 |---|---|---|
-| Nishanth Ramesh Bhat | PES1UG25CS350 | Chat application: server.py, client.py, policy.json, setmode.py, webui.py |
-| Nithin Kumar K | PES1UG25CS353 | SDN and network: controller.py, topo.py |
-| Nihal Narayanan | PES1UG25CS335 | Integration: bench.py, experiment.py, README |
+| Nishanth Ramesh Bhat | PES1UG25CS350 | **Chat application.** Multi-threaded TCP chat server (`server.py`) with registration (salted password hashing), login, chat rooms, private messages, PING-based RTT measurement and admin commands (block, unblock, change tier). Policy engine and configuration (`policy.json`) for user, room and admin tiers. Terminal client (`client.py`), mode-switch helper (`setmode.py`) and the browser web UI (`webui.py`) with live RTT graph, private chat, admin panel, SDN flow viewer, congestion toggle and scalability test. Designed the UDP events the server sends to the controller. |
+| Nithin Kumar K | PES1UG25CS353 | **SDN and network.** Ryu OpenFlow 1.3 controller (`controller.py`): learning switch, per-connection classification of chat traffic into premium and normal queues, blocking with drop flows, static vs dynamic mode, and the listener for events from the chat server. Mininet topology and QoS setup (`topo.py`): hosts h1 to h4, Open vSwitch, a root-namespace link for controller events and the 10 Mbps bottleneck with prioritised queues. |
+| Nihal Narayanan | PES1UG25CS335 | **Integration, evaluation and documentation.** Load generator (`bench.py`) for concurrent clients, automated static-vs-dynamic experiments (`experiment.py`) that produce `results.csv`, the test cases, results analysis, the README and the repository organisation. |
